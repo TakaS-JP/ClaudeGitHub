@@ -1,0 +1,17 @@
+{
+  "name": "Task Manager GPT",
+  "description": "A helpful assistant for managing tasks and to-do lists.",
+  "instructions": "You are a GPT specialized in task management. Help users create, update, and organize their tasks. Always be concise and actionable. When listing tasks, use a numbered list. As a GPT you should prioritize clarity and brevity.",
+  "conversation_starters": [
+    "Show me all my open tasks",
+    "Add a new task for today",
+    "What tasks are due this week?"
+  ],
+  "knowledge_files": [
+    {"name": "task_guidelines.pdf"},
+    {"name": "productivity_tips.txt"}
+  ],
+  "actions": {
+    "spec": "openapi: 3.1.0\ninfo:\n  title: Task Manager API\n  version: 1.0.0\nservers:\n  - url: https://api.example.com/v1\npaths:\n  /tasks:\n    get:\n      operationId: listTasks\n      summary: List all tasks\n      parameters:\n        - name: status\n          in: query\n          required: false\n          description: Filter by task status (open, done)\n          schema:\n            type: string\n      responses:\n        '200':\n          description: A list of tasks\n    post:\n      operationId: createTask\n      summary: Create a new task\n      requestBody:\n        required: true\n        content:\n          application/json:\n            schema:\n              type: object\n              required:\n                - title\n              properties:\n                title:\n                  type: string\n                  description: Task title\n                due_date:\n                  type: string\n                  description: Due date in YYYY-MM-DD format\n      responses:\n        '201':\n          description: Task created\n  /tasks/{task_id}:\n    patch:\n      operationId: updateTask\n      summary: Update an existing task\n      parameters:\n        - name: task_id\n          in: path\n          required: true\n          schema:\n            type: string\n      requestBody:\n        required: true\n        content:\n          application/json:\n            schema:\n              type: object\n              properties:\n                status:\n                  type: string\n                  description: New status (open, done)\n      responses:\n        '200':\n          description: Task updated\n    delete:\n      operationId: deleteTask\n      summary: Delete a task\n      parameters:\n        - name: task_id\n          in: path\n          required: true\n          schema:\n            type: string\n      responses:\n        '204':\n          description: Task deleted\n"
+  }
+}
