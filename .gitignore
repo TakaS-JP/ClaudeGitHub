@@ -30,6 +30,11 @@ env/
 # Logs
 *.log
 
+# Accounting outputs
+out/
+.pytest_cache/
+samples/credit_card_sample.xlsx
+
 # OS
 .DS_Store
 Thumbs.db

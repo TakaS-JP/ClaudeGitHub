@@ -1,0 +1,159 @@
+# セイキョウ 経理自動化 仕訳ルール定義
+# ----------------------------------------------------------------------
+# このファイルは「摘要・取引先名」をキーワードとして仕訳を自動判定するための
+# ルール集合です. マネーフォワードクラウド会計の仕訳インポートCSVに合わせた
+# 形式で出力されます.
+#
+# ルールは上から順に評価され, 最初に keywords のいずれかが
+# (摘要 + 取引先 + メモ) に部分一致したルールが採用されます.
+# どれにもマッチしなかった場合は defaults が適用されます.
+#
+# キーワード比較は全角→半角・小文字化・空白除去された後に行われます.
+# ----------------------------------------------------------------------
+
+# 支払元(クレジットカード・銀行口座)に対応する勘定科目.
+# importer 側で source / payment_source_id を指定して呼び分けます.
+payment_accounts:
+  # クレジットカードは「未払金」+ 補助科目でカード別管理.
+  "credit_card:rakuten":
+    account: 未払金
+    sub_account: 楽天カード
+  "credit_card:amex":
+    account: 未払金
+    sub_account: アメックスビジネス
+  credit_card:                      # source指定のみ (フォールバック)
+    account: 未払金
+    sub_account: クレジットカード
+  # 銀行口座は「普通預金」+ 補助科目で口座別管理.
+  "bank_transfer:mufg":
+    account: 普通預金
+    sub_account: 三菱UFJ銀行
+  "bank_transfer:smbc":
+    account: 普通預金
+    sub_account: 三井住友銀行
+  bank_transfer:
+    account: 普通預金
+    sub_account: ""
+
+# ----------------------------------------------------------------------
+# 支出ルール (クレカ利用 & 銀行振込支出)
+# ----------------------------------------------------------------------
+expense_rules:
+  - name: 旅費交通費-JR/私鉄
+    keywords: [JR東日本, JR西日本, 東京メトロ, 都営, モバイルSuica, PASMO, タクシー, ETC]
+    debit_account: 旅費交通費
+    debit_tax_category: 課税仕入 10%
+
+  - name: 通信費-携帯/プロバイダ
+    keywords: [NTT, ドコモ, au, ソフトバンク, 楽天モバイル, ニフティ, OCN, ZOOM]
+    debit_account: 通信費
+    debit_tax_category: 課税仕入 10%
+
+  - name: 水道光熱費
+    keywords: [東京電力, TEPCO, 関西電力, 東京ガス, 大阪ガス, 水道局]
+    debit_account: 水道光熱費
+    debit_tax_category: 課税仕入 10%
+
+  - name: 消耗品費-Amazon/通販
+    keywords: [AMAZON, アマゾン, ヨドバシ, ビックカメラ, アスクル, ASKUL, MONOTARO]
+    debit_account: 消耗品費
+    debit_tax_category: 課税仕入 10%
+
+  - name: 会議費-カフェ
+    keywords: [スターバックス, STARBUCKS, ドトール, タリーズ, EXCELSIOR]
+    debit_account: 会議費
+    debit_tax_category: 課税仕入 10%
+
+  - name: 接待交際費
+    keywords: [接待, 寿司, 料亭, クラブ, BAR]
+    debit_account: 接待交際費
+    debit_tax_category: 課税仕入 10%
+
+  - name: 支払手数料-銀行/カード
+    keywords: [振込手数料, 振替手数料, 年会費, ATM手数料]
+    debit_account: 支払手数料
+    debit_tax_category: 課税仕入 10%
+
+  - name: 地代家賃
+    keywords: [家賃, 賃料, 不動産, テナント]
+    debit_account: 地代家賃
+    debit_tax_category: 課税仕入 10%
+
+  - name: 給与振込
+    keywords: [給与, 給料, 賞与, ボーナス]
+    debit_account: 給料手当
+    debit_tax_category: 対象外
+
+  - name: 仕入(部門:卸売)
+    keywords: [仕入, 材料, 商品]
+    debit_account: 仕入高
+    debit_department: 卸売部門
+    debit_tax_category: 課税仕入 10%
+
+  - name: 広告宣伝費
+    keywords: [Google広告, Meta, FACEBOOK, YAHOO広告, GOOGLE ADS, META PLATFORMS]
+    debit_account: 広告宣伝費
+    debit_tax_category: 課税仕入 10%
+
+  - name: 租税公課
+    keywords: [印紙, 自動車税, 固定資産税, 消費税納付]
+    debit_account: 租税公課
+    debit_tax_category: 対象外
+
+# ----------------------------------------------------------------------
+# 入金(売上)ルール - 部門別売上を実現する中核
+# ----------------------------------------------------------------------
+income_rules:
+  - name: 売上-EC事業部 (オンラインモール)
+    keywords: [楽天市場, AMAZON 売上, AMAZON SELLER, YAHOO!ショッピング, BASE, SHOPIFY]
+    credit_account: 売上高
+    credit_sub_account: EC売上
+    credit_department: EC事業部
+    credit_tax_category: 課税売上 10%
+
+  - name: 売上-卸売部門 (BtoB振込)
+    # カ）/カ. はインターネットバンキングで頻出する「株式会社」省略表記.
+    keywords: [株式会社, ㈱, "カ）", "カ.", KK, 商事, 商店, 卸]
+    credit_account: 売上高
+    credit_sub_account: 卸売
+    credit_department: 卸売部門
+    credit_tax_category: 課税売上 10%
+
+  - name: 売上-店舗A
+    keywords: [店舗A, SHOP-A, 渋谷店]
+    credit_account: 売上高
+    credit_sub_account: 店舗売上
+    credit_department: 店舗A
+    credit_tax_category: 課税売上 10%
+
+  - name: 売上-店舗B
+    keywords: [店舗B, SHOP-B, 大阪店]
+    credit_account: 売上高
+    credit_sub_account: 店舗売上
+    credit_department: 店舗B
+    credit_tax_category: 課税売上 10%
+
+  - name: 売上-コンサルティング
+    keywords: [コンサル, 顧問料, アドバイザリー]
+    credit_account: 売上高
+    credit_sub_account: コンサル売上
+    credit_department: コンサル事業部
+    credit_tax_category: 課税売上 10%
+
+  - name: 受取利息
+    keywords: [利息, 利子]
+    credit_account: 受取利息
+    credit_tax_category: 非課税売上
+
+# ----------------------------------------------------------------------
+# どのルールにもマッチしないときのフォールバック.
+# default-expense は要レビュー扱いになるよう「仮払金」等で受けるのも一案.
+# ----------------------------------------------------------------------
+defaults:
+  expense:
+    debit_account: 雑費
+    debit_tax_category: 課税仕入 10%
+  income:
+    credit_account: 売上高
+    credit_department: 本社
+    credit_tax_category: 課税売上 10%
