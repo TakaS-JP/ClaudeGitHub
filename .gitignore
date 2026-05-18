@@ -6,6 +6,9 @@ token.json
 # Attachments (runtime-generated)
 attachments/
 
+# Tokyo bidding downloader output (runtime-generated)
+output/
+
 # Python
 __pycache__/
 *.py[cod]
