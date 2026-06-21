@@ -15,33 +15,39 @@ ROW_A = (255, 255, 255)
 ROW_B = (244, 246, 251)
 LINE = (214, 220, 232)
 
-# 各日付ブロック: (日付, 曜日, [(時間, 予定, 強調?), ...])
+# 各日付ブロック: (日付, 曜日, [(時間, 予定, 強調?, 住所), ...])
+EXPO = "AsiaWorld-Expo（香港国際空港／ランタオ島）"
 DAYS = [
     ("7/3", "金", [
-        ("18:45", "NH811 成田発", False),
-        ("22:35", "香港着 ／ ホテルチェックイン", False),
+        ("18:45", "NH811 成田発", False, ""),
+        ("22:35", "香港着 ／ ホテルチェックイン", False, ""),
     ]),
     ("7/4", "土", [
-        ("06:15", "代議員朝食会 送迎バス発（インターコンチネンタル グランドスタンフォード香港 前）", False),
-        ("07:00", "日本ライオンズ代議員会・朝食会  リーガルエアポートホテル", False),
-        ("09:00", "開会式", False),
-        ("18:30", "MD333「議長・ガバナーを囲む晩餐会」  好彩海鮮酒家（帝国中心 2F）", True),
+        ("06:15", "代議員朝食会 送迎バス発（インターコンチネンタル グランドスタンフォード香港 前）", False,
+         "70 Mody Road, Tsim Sha Tsui East, Kowloon（尖沙咀東 麼地道70號）"),
+        ("07:00", "日本ライオンズ代議員会・朝食会  リーガルエアポートホテル", False,
+         "9 Cheong Tat Road, Chek Lap Kok, Lantau（大嶼山赤鱲角 暢達路9號）"),
+        ("09:00", "開会式", False, EXPO),
+        ("18:30", "MD333「議長・ガバナーを囲む晩餐会」  好彩海鮮酒家（帝国中心 2F）", True,
+         "68 Mody Road, Tsim Sha Tsui East, Kowloon（尖沙咀東 麼地道68號 帝国中心2F） TEL +852-2311-4567"),
     ]),
     ("7/5", "日", [
-        ("09:00", "二日目総会 ／ 代議員投票", False),
-        ("18:30", "333-E地区「ガバナーを囲む夕食会」  Regal Kowloon Hotel", True),
+        ("09:00", "二日目総会 ／ 代議員投票", False, EXPO),
+        ("18:30", "333-E地区「ガバナーを囲む夕食会」  Regal Kowloon Hotel", True,
+         "71 Mody Road, Tsim Sha Tsui, Kowloon（尖沙咀 麼地道71號） TEL +852-2722-1818"),
     ]),
     ("7/6", "月", [
-        ("12:30", "メルビン・ジョーンズ・フェロー昼食会", False),
-        ("15:00", "閉会式（鈴木光成ガバナー就任）", True),
-        ("18:30", "333-E地区「鈴木光成ガバナーを励ます夕べ」  会場未定", True),
+        ("12:30", "メルビン・ジョーンズ・フェロー昼食会", False, EXPO),
+        ("15:00", "閉会式（鈴木光成ガバナー就任）", True, EXPO),
+        ("18:30", "333-E地区「鈴木光成ガバナーを励ます夕べ」  会場未定", True,
+         "会場が決定次第、追って記載"),
     ]),
     ("7/7", "火", [
-        ("19:00", "国際役員との集い", False),
+        ("19:00", "国際役員との集い", False, EXPO),
     ]),
     ("7/8", "水", [
-        ("09:30", "NH812 香港発", False),
-        ("15:10", "成田着", False),
+        ("09:30", "NH812 香港発", False, ""),
+        ("15:10", "成田着", False, ""),
     ]),
 ]
 
@@ -99,17 +105,26 @@ pdf.set_y(BANNER_H + 8)
 W_DATE, W_TIME = 30, 18
 W_PLAN = EPW - W_DATE - W_TIME
 GAP_X = LM + W_DATE + W_TIME  # plan列 開始X
-LH = 5.8
+LH = 5.4
+ADDR_LH = 4.3
 PAD = 3.2
+PLAN_X = GAP_X + PAD + 2.0
+PLAN_W = W_PLAN - PAD * 2 - 2.0
 
 pdf.set_font("jp", "", 10)
 alt = False
 for day_idx, (md, wd, rows) in enumerate(DAYS):
-    # 行高さを計測（予定セルの折返し）
+    # 行高さを計測（予定＋住所の折返し）
     heights = []
-    for tm, plan, key in rows:
-        n = len(pdf.multi_cell(W_PLAN - PAD * 2, LH, plan, dry_run=True, output="LINES"))
-        heights.append(max(1, n) * LH + 3.2)
+    for tm, plan, key, addr in rows:
+        pdf.set_font("jp", "", 10)
+        pn = len(pdf.multi_cell(PLAN_W, LH, plan, dry_run=True, output="LINES"))
+        h = max(1, pn) * LH
+        if addr:
+            pdf.set_font("jp", "", 7.8)
+            an = len(pdf.multi_cell(PLAN_W, ADDR_LH, addr, dry_run=True, output="LINES"))
+            h += max(1, an) * ADDR_LH + 0.6
+        heights.append(h + 3.4)
     block_h = sum(heights)
 
     y0 = pdf.get_y()
@@ -134,8 +149,19 @@ for day_idx, (md, wd, rows) in enumerate(DAYS):
 
     # 各予定行
     y = y0
-    for (tm, plan, key), rh in zip(rows, heights):
+    for ridx, ((tm, plan, key, addr), rh) in enumerate(zip(rows, heights)):
         cy = y + rh / 2
+        # 予定＋住所の合計高さ
+        pdf.set_font("jp", "", 10)
+        pn = max(1, len(pdf.multi_cell(PLAN_W, LH, plan, dry_run=True, output="LINES")))
+        plan_h = pn * LH
+        addr_h = 0
+        if addr:
+            pdf.set_font("jp", "", 7.8)
+            an = max(1, len(pdf.multi_cell(PLAN_W, ADDR_LH, addr, dry_run=True, output="LINES")))
+            addr_h = an * ADDR_LH + 0.6
+        content_h = plan_h + addr_h
+        ty = cy - content_h / 2
         # 時間
         pdf.set_font("jp", "", 9.5)
         pdf.set_text_color(*(GOLD if key else BLUE))
@@ -148,14 +174,19 @@ for day_idx, (md, wd, rows) in enumerate(DAYS):
         # 予定テキスト
         pdf.set_font("jp", "", 10)
         pdf.set_text_color(*(NAVY if key else INK))
-        nlines = len(pdf.multi_cell(W_PLAN - PAD * 2, LH, plan, dry_run=True, output="LINES"))
-        text_h = nlines * LH
-        pdf.set_xy(GAP_X + PAD + 2.0, cy - text_h / 2)
-        pdf.multi_cell(W_PLAN - PAD * 2 - 2.0, LH, plan, align="L",
+        pdf.set_xy(PLAN_X, ty)
+        pdf.multi_cell(PLAN_W, LH, plan, align="L",
                        max_line_height=LH, new_x="LMARGIN", new_y="TOP")
+        # 住所テキスト
+        if addr:
+            pdf.set_font("jp", "", 7.8)
+            pdf.set_text_color(*SOFT)
+            pdf.set_xy(PLAN_X, ty + plan_h + 0.6)
+            pdf.multi_cell(PLAN_W, ADDR_LH, addr, align="L",
+                           max_line_height=ADDR_LH, new_x="LMARGIN", new_y="TOP")
         # 行内の薄い区切り線（最終行以外）
         y += rh
-        if (tm, plan, key) != rows[-1]:
+        if ridx != len(rows) - 1:
             pdf.set_draw_color(*LINE)
             pdf.set_line_width(0.2)
             pdf.line(x + W_DATE + 2, y, x + EPW - 2, y)
